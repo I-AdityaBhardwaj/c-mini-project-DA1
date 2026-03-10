@@ -6,6 +6,7 @@ Project Title: Mini Banking System with Transaction Log
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h> // Added for usleep() to prevent browser freezing
 
 // Structure definitions
 typedef struct {
@@ -16,7 +17,7 @@ typedef struct {
 
 typedef struct {
     int accNo;
-    char type[20]; // "Deposit" or "Withdraw"
+    char type[20];
     float amount;
     char date[50];
 } Transaction;
@@ -34,6 +35,8 @@ const char* logFile = "transactions.log";
 
 int main() {
     int choice;
+    int res;
+
     do {
         printf("\n--- Mini Banking System ---\n");
         printf("1. Create Account\n");
@@ -44,8 +47,16 @@ int main() {
         printf("6. Exit\n");
         printf("Enter your choice: ");
         
-        // Input validation
-        if (scanf("%d", &choice) != 1) {
+        // FIX: Check for EOF and add a tiny delay
+        // This stops the "Unresponsive" error by giving the browser a breather
+        res = scanf("%d", &choice);
+        
+        if (res == EOF) {
+            usleep(100000); // Wait 0.1 seconds if no input is ready
+            continue;
+        }
+
+        if (res != 1) {
             printf("Invalid input. Please enter a number.\n");
             while(getchar() != '\n'); // clear buffer
             continue;
@@ -68,7 +79,7 @@ int main() {
 // 1. Function to create a new account
 void createAccount() {
     Account acc;
-    FILE *fp = fopen(accFile, "ab"); // Append binary
+    FILE *fp = fopen(accFile, "ab"); 
     
     if (fp == NULL) {
         printf("Error opening file!\n");
@@ -76,9 +87,8 @@ void createAccount() {
     }
 
     printf("Enter Account Number: ");
-    scanf("%d", &acc.accNo);
+    if(scanf("%d", &acc.accNo) != 1) return;
     
-    // Check if account already exists
     Account temp;
     if (findAccount(acc.accNo, &temp)) {
         printf("Account Number already exists!\n");
@@ -102,13 +112,12 @@ void createAccount() {
     fclose(fp);
     printf("Account created successfully!\n");
     
-    // Log initial deposit if any
     if(acc.balance > 0) {
         logTransaction(acc.accNo, "Initial Deposit", acc.balance);
     }
 }
 
-// Helper function to find an account and load it into struct
+// Helper function to find an account
 int findAccount(int accNo, Account *acc) {
     FILE *fp = fopen(accFile, "rb");
     if (fp == NULL) return 0;
@@ -116,11 +125,11 @@ int findAccount(int accNo, Account *acc) {
     while(fread(acc, sizeof(Account), 1, fp)) {
         if(acc->accNo == accNo) {
             fclose(fp);
-            return 1; // Found
+            return 1; 
         }
     }
     fclose(fp);
-    return 0; // Not found
+    return 0; 
 }
 
 // 2. & 3. Function to handle Deposits and Withdrawals
@@ -131,11 +140,11 @@ void depositOrWithdraw(int isDeposit) {
     int found = 0;
     
     printf("Enter Account Number: ");
-    scanf("%d", &accNo);
+    if(scanf("%d", &accNo) != 1) return;
 
     FILE *fp = fopen(accFile, "rb+");
     if (fp == NULL) {
-        printf("Error opening file!\n");
+        printf("No accounts found! Please create one first.\n");
         return;
     }
 
@@ -153,23 +162,18 @@ void depositOrWithdraw(int isDeposit) {
             }
 
             if (!isDeposit && (acc.balance - amount < 0)) {
-                printf("Error: Insufficient balance. Negative balance prevented.\n");
+                printf("Error: Insufficient balance.\n");
                 fclose(fp);
                 return;
             }
 
-            // Update balance
-            if (isDeposit) {
-                acc.balance += amount;
-            } else {
-                acc.balance -= amount;
-            }
+            if (isDeposit) acc.balance += amount;
+            else acc.balance -= amount;
 
-            // Move file pointer back to overwrite the specific record
             fseek(fp, -sizeof(Account), SEEK_CUR);
             fwrite(&acc, sizeof(Account), 1, fp);
             
-            printf("Transaction successful! New Balance: %.2f\n", acc.balance);
+            printf("Success! New Balance: %.2f\n", acc.balance);
             logTransaction(accNo, isDeposit ? "Deposit" : "Withdrawal", amount);
             break;
         }
@@ -179,19 +183,16 @@ void depositOrWithdraw(int isDeposit) {
     fclose(fp);
 }
 
-// 4. Function to search and view account summary
+// 4. Function to search summary
 void searchAccount() {
     int accNo;
     Account acc;
-    printf("Enter Account Number to search: ");
-    scanf("%d", &accNo);
+    printf("Enter Account Number: ");
+    if(scanf("%d", &accNo) != 1) return;
 
     if(findAccount(accNo, &acc)) {
         printf("\n--- Account Summary ---\n");
-        printf("Account No: %d\n", acc.accNo);
-        printf("Name: %s\n", acc.name);
-        printf("Balance: %.2f\n", acc.balance);
-        printf("-----------------------\n");
+        printf("Acc No: %d | Name: %s | Balance: %.2f\n", acc.accNo, acc.name, acc.balance);
     } else {
         printf("Account not found!\n");
     }
@@ -202,7 +203,6 @@ void logTransaction(int accNo, const char* type, float amount) {
     FILE *fp = fopen(logFile, "a");
     if (fp == NULL) return;
 
-    // Get current date/time
     time_t t = time(NULL);
     struct tm tm = *localtime(&t);
     char dateStr[50];
@@ -215,46 +215,37 @@ void logTransaction(int accNo, const char* type, float amount) {
 // 6. Function to view last 5 transactions
 void viewLastTransactions() {
     int searchAccNo;
-    printf("Enter Account Number to view transactions: ");
-    scanf("%d", &searchAccNo);
+    printf("Enter Account Number: ");
+    if(scanf("%d", &searchAccNo) != 1) return;
 
     FILE *fp = fopen(logFile, "r");
     if (fp == NULL) {
-        printf("No transactions found!\n");
+        printf("No logs found!\n");
         return;
     }
 
-    // Temporary array to hold lines
     char lines[100][150];
-    int count = 0;
-    int accNo;
-    char type[20], dateStr[50];
+    int count = 0, accNo;
+    char type[20], dateStr[50], buffer[150];
     float amount;
 
-    // Read all transactions, filter by Account Number
-    char buffer[150];
     while (fgets(buffer, sizeof(buffer), fp)) {
         sscanf(buffer, "%d,%[^,],%f,%[^\n]", &accNo, type, &amount, dateStr);
         if (accNo == searchAccNo) {
-            strcpy(lines[count], buffer);
-            count++;
+            strcpy(lines[count++], buffer);
         }
     }
     fclose(fp);
 
     if (count == 0) {
-        printf("No transactions found for this account.\n");
+        printf("No records found.\n");
         return;
     }
 
     printf("\n--- Last 5 Transactions ---\n");
-    printf("%-15s %-15s %-10s %-20s\n", "Account No", "Type", "Amount", "Date/Time");
-    
-    // Print up to the last 5 transactions
     int start = (count > 5) ? count - 5 : 0;
     for (int i = start; i < count; i++) {
         sscanf(lines[i], "%d,%[^,],%f,%[^\n]", &accNo, type, &amount, dateStr);
-        printf("%-15d %-15s %-10.2f %-20s\n", accNo, type, amount, dateStr);
+        printf("%s | %-10s | %.2f\n", dateStr, type, amount);
     }
-    printf("---------------------------\n");
 }
