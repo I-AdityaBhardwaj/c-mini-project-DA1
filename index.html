@@ -2,88 +2,16 @@
 <html lang="en-us">
   <head>
     <meta charset="utf-8">
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <title>Mini Banking System - Terminal</title>
     <style>
-      body {
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        margin: 0;
-        background-color: #121212;
-        color: #e0e0e0;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        padding: 20px;
-      }
-
-      h1 { color: #4caf50; margin-bottom: 10px; }
-
-      /* UI FOR INPUT */
-      .ui-container {
-        background: #1e1e1e;
-        padding: 20px;
-        border-radius: 10px;
-        border: 1px solid #333;
-        width: 90%;
-        max-width: 600px;
-        margin-bottom: 20px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-      }
-
-      .input-group {
-        display: flex;
-        gap: 10px;
-      }
-
-      input#userInput {
-        flex: 1;
-        padding: 12px;
-        border-radius: 5px;
-        border: 1px solid #444;
-        background: #2d2d2d;
-        color: white;
-        font-size: 16px;
-      }
-
-      button#sendBtn {
-        padding: 10px 20px;
-        background: #4caf50;
-        color: white;
-        border: none;
-        border-radius: 5px;
-        cursor: pointer;
-        font-weight: bold;
-      }
-
-      button#sendBtn:hover { background: #45a049; }
-
-      /* TERMINAL OUTPUT */
-      #output {
-        width: 90%;
-        max-width: 800px;
-        height: 400px;
-        background: black;
-        color: #00ff00; /* Terminal Green */
-        font-family: 'Courier New', Courier, monospace;
-        padding: 15px;
-        border: 2px solid #333;
-        border-radius: 5px;
-        overflow-y: auto;
-        white-space: pre-wrap;
-        font-size: 14px;
-        line-height: 1.4;
-      }
-
-      .status-bar { font-size: 12px; color: #888; margin-top: 5px; }
-      
-      /* Hide the technical Emscripten elements we don't need */
-      #canvas { display: none; }
-      .spinner {
-        height: 20px; width: 20px; margin: 0;
-        display: inline-block; vertical-align: top;
-        animation: rotation 0.8s linear infinite;
-        border: 3px solid #eee; border-top: 3px solid #4caf50; border-radius: 100%;
-      }
+      body { font-family: 'Segoe UI', sans-serif; background-color: #121212; color: #e0e0e0; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+      h1 { color: #4caf50; }
+      .ui-container { background: #1e1e1e; padding: 20px; border-radius: 10px; border: 1px solid #333; width: 90%; max-width: 600px; margin-bottom: 20px; }
+      .input-group { display: flex; gap: 10px; }
+      input#userInput { flex: 1; padding: 12px; border-radius: 5px; border: 1px solid #444; background: #2d2d2d; color: white; }
+      button#sendBtn { padding: 10px 20px; background: #4caf50; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+      #output { width: 90%; max-width: 800px; height: 400px; background: black; color: #00ff00; font-family: monospace; padding: 15px; border: 2px solid #333; border-radius: 5px; overflow-y: auto; white-space: pre-wrap; }
+      .spinner { height: 20px; width: 20px; display: inline-block; animation: rotation 0.8s linear infinite; border: 3px solid #eee; border-top: 3px solid #4caf50; border-radius: 100%; }
       @keyframes rotation { from {transform: rotate(0deg);} to {transform: rotate(360deg);} }
     </style>
   </head>
@@ -97,15 +25,13 @@
         <input type="text" id="userInput" placeholder="Type here and press Enter..." autofocus>
         <button id="sendBtn" onclick="handleInput()">Send</button>
       </div>
-      <div class="status-bar">
+      <div class="status-bar" style="margin-top:10px;">
         <div class="spinner" id='spinner'></div>
-        <span id="status">Downloading...</span>
+        <span id="status" style="font-size: 12px; color: #888;">Downloading...</span>
       </div>
     </div>
 
     <div id="output"></div>
-
-    <canvas id="canvas" oncontextmenu="event.preventDefault()"></canvas>
 
     <script type='text/javascript'>
       var statusElement = document.getElementById('status');
@@ -113,27 +39,23 @@
       var outputElement = document.getElementById('output');
       var userInputField = document.getElementById('userInput');
 
-      // --- THE BRIDGE LOGIC ---
       var inputQueue = [];
 
       function handleInput() {
         var val = userInputField.value;
         if (val === "") return;
 
-        // Show what the user typed in the terminal
         outputElement.innerText += "> " + val + "\n";
         
-        // Add a newline so C's scanf() knows the input is finished
         var str = val + "\n";
         for (var i = 0; i < str.length; i++) {
           inputQueue.push(str.charCodeAt(i));
         }
 
-        userInputField.value = ""; // Clear input
-        outputElement.scrollTop = outputElement.scrollHeight; // Auto-scroll
+        userInputField.value = "";
+        outputElement.scrollTop = outputElement.scrollHeight;
       }
 
-      // Listen for Enter key
       userInputField.addEventListener('keypress', function (e) {
         if (e.key === 'Enter') handleInput();
       });
@@ -142,22 +64,18 @@
         preRun: [],
         postRun: [],
         print: function(text) {
-          if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
-          // Append text to our output div
           if (outputElement) {
             outputElement.innerText += text + "\n";
             outputElement.scrollTop = outputElement.scrollHeight;
           }
         },
-        // OVERRIDE STDIN: This is the magic part.
-        // C calls this function whenever it needs data from scanf()
+        // The stdin bridge
         stdin: function() {
           if (inputQueue.length > 0) {
             return inputQueue.shift();
           }
           return null; 
         },
-        canvas: document.getElementById('canvas'),
         setStatus: function(text) {
           if (!text) {
             statusElement.style.display = 'none';
