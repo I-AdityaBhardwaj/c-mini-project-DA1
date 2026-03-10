@@ -3,118 +3,154 @@
   <head>
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>Mini Banking System - Live</title>
+    <title>Mini Banking System - Terminal</title>
     <style>
       body {
-        font-family: arial;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         margin: 0;
+        background-color: #121212;
+        color: #e0e0e0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
         padding: 20px;
-        background-color: #1a1a1a;
-        color: #eee;
-        text-align: center;
       }
 
-      /* CUSTOM INPUT AREA STYLING */
-      .input-area { 
-        background: #333; 
-        padding: 20px; 
-        border-radius: 8px; 
-        display: inline-block; 
+      h1 { color: #4caf50; margin-bottom: 10px; }
+
+      /* UI FOR INPUT */
+      .ui-container {
+        background: #1e1e1e;
+        padding: 20px;
+        border-radius: 10px;
+        border: 1px solid #333;
+        width: 90%;
+        max-width: 600px;
         margin-bottom: 20px;
-        border: 1px solid #444;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.5);
       }
-      input#userInput { 
-        padding: 12px; 
-        width: 300px; 
-        border: none; 
-        border-radius: 4px; 
-        font-size: 16px;
-      }
-      button#sendBtn { 
-        padding: 12px 25px; 
-        background: #27ae60; 
-        color: white; 
-        border: none; 
-        border-radius: 4px; 
-        cursor: pointer; 
-        font-weight: bold; 
-        font-size: 16px;
-        margin-left: 10px;
-      }
-      button#sendBtn:hover { background: #2ecc71; }
 
-      /* TERMINAL OUTPUT STYLING */
+      .input-group {
+        display: flex;
+        gap: 10px;
+      }
+
+      input#userInput {
+        flex: 1;
+        padding: 12px;
+        border-radius: 5px;
+        border: 1px solid #444;
+        background: #2d2d2d;
+        color: white;
+        font-size: 16px;
+      }
+
+      button#sendBtn {
+        padding: 10px 20px;
+        background: #4caf50;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: bold;
+      }
+
+      button#sendBtn:hover { background: #45a049; }
+
+      /* TERMINAL OUTPUT */
       #output {
         width: 90%;
-        height: 450px;
-        margin: 0 auto;
-        display: block;
-        background-color: black;
-        color: #33ff33; /* Classic terminal green */
-        font-family: 'Lucida Console', Monaco, monospace;
+        max-width: 800px;
+        height: 400px;
+        background: black;
+        color: #00ff00; /* Terminal Green */
+        font-family: 'Courier New', Courier, monospace;
         padding: 15px;
-        border: 2px solid #444;
+        border: 2px solid #333;
         border-radius: 5px;
-        outline: none;
-        resize: none;
+        overflow-y: auto;
+        white-space: pre-wrap;
+        font-size: 14px;
+        line-height: 1.4;
       }
 
-      .emscripten { padding-right: 0; margin-left: auto; margin-right: auto; display: block; }
-      #status { font-weight: bold; color: #888; margin-bottom: 10px; }
-      canvas { display: none; } /* We don't need the graphics canvas for a terminal project */
+      .status-bar { font-size: 12px; color: #888; margin-top: 5px; }
+      
+      /* Hide the technical Emscripten elements we don't need */
+      #canvas { display: none; }
+      .spinner {
+        height: 20px; width: 20px; margin: 0;
+        display: inline-block; vertical-align: top;
+        animation: rotation 0.8s linear infinite;
+        border: 3px solid #eee; border-top: 3px solid #4caf50; border-radius: 100%;
+      }
+      @keyframes rotation { from {transform: rotate(0deg);} to {transform: rotate(360deg);} }
     </style>
   </head>
   <body>
-    
+
     <h1>🏦 Mini Banking System</h1>
 
-    <div class="input-area">
-        <input type="text" id="userInput" placeholder="Type menu option or data here..." autofocus>
-        <button id="sendBtn" onclick="sendCommand()">Send Input</button>
+    <div class="ui-container">
+      <p style="margin-top:0; font-size: 14px; color: #bbb;">Enter choice (1-6) or account details below:</p>
+      <div class="input-group">
+        <input type="text" id="userInput" placeholder="Type here and press Enter..." autofocus>
+        <button id="sendBtn" onclick="handleInput()">Send</button>
+      </div>
+      <div class="status-bar">
+        <div class="spinner" id='spinner'></div>
+        <span id="status">Downloading...</span>
+      </div>
     </div>
 
-    <div class="emscripten" id="status">Loading System...</div>
+    <div id="output"></div>
 
-    <textarea id="output" readonly></textarea>
-    
     <canvas id="canvas" oncontextmenu="event.preventDefault()"></canvas>
 
     <script type='text/javascript'>
       var statusElement = document.getElementById('status');
+      var spinnerElement = document.getElementById('spinner');
       var outputElement = document.getElementById('output');
-      var userInput = document.getElementById('userInput');
-      
-      // STEP 3: The Input Bridge Logic
-      var inputQueue = []; 
+      var userInputField = document.getElementById('userInput');
 
-      function sendCommand() {
-          if (!userInput.value) return;
-          
-          // Show what the user typed in the terminal so it looks natural
-          outputElement.value += "> " + userInput.value + "\n";
-          
-          // Convert text to character codes for the C program
-          var val = userInput.value + "\n"; 
-          for (var i = 0; i < val.length; i++) {
-              inputQueue.push(val.charCodeAt(i));
-          }
-          userInput.value = ""; // Clear input box
-          outputElement.scrollTop = outputElement.scrollHeight;
+      // --- THE BRIDGE LOGIC ---
+      var inputQueue = [];
+
+      function handleInput() {
+        var val = userInputField.value;
+        if (val === "") return;
+
+        // Show what the user typed in the terminal
+        outputElement.innerText += "> " + val + "\n";
+        
+        // Add a newline so C's scanf() knows the input is finished
+        var str = val + "\n";
+        for (var i = 0; i < str.length; i++) {
+          inputQueue.push(str.charCodeAt(i));
+        }
+
+        userInputField.value = ""; // Clear input
+        outputElement.scrollTop = outputElement.scrollHeight; // Auto-scroll
       }
 
-      // Allow pressing "Enter" key to send
-      userInput.addEventListener('keypress', function (e) {
-          if (e.key === 'Enter') sendCommand();
+      // Listen for Enter key
+      userInputField.addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') handleInput();
       });
 
       var Module = {
+        preRun: [],
+        postRun: [],
         print: function(text) {
+          if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
+          // Append text to our output div
           if (outputElement) {
-            outputElement.value += text + "\n";
+            outputElement.innerText += text + "\n";
             outputElement.scrollTop = outputElement.scrollHeight;
           }
         },
-        // STEP 4: Tell C to look at our Input Queue instead of opening Pop-ups
+        // OVERRIDE STDIN: This is the magic part.
+        // C calls this function whenever it needs data from scanf()
         stdin: function() {
           if (inputQueue.length > 0) {
             return inputQueue.shift();
@@ -123,7 +159,12 @@
         },
         canvas: document.getElementById('canvas'),
         setStatus: function(text) {
-          if (statusElement) statusElement.innerHTML = text;
+          if (!text) {
+            statusElement.style.display = 'none';
+            spinnerElement.style.display = 'none';
+          } else {
+            statusElement.innerHTML = text;
+          }
         }
       };
     </script>
