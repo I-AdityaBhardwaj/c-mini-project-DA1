@@ -1,14 +1,15 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="utf-8">
 <title>Mini Banking System</title>
 
 <style>
+
 body{
-    font-family: monospace;
-    background:#111;
-    color:#00ff9c;
+    font-family: Arial;
+    background:#121212;
+    color:white;
     text-align:center;
 }
 
@@ -16,79 +17,112 @@ h1{
     color:#4CAF50;
 }
 
-#terminal{
-    width:800px;
-    height:400px;
-    margin:auto;
-    background:black;
-    border:2px solid #444;
-    overflow-y:auto;
-    padding:10px;
-    text-align:left;
-    white-space:pre-wrap;
-}
-
-#inputBox{
+.container{
     width:600px;
-    padding:10px;
-    margin-top:10px;
+    margin:auto;
 }
 
 button{
-    padding:10px 20px;
+    padding:10px 15px;
+    margin:5px;
+    border:none;
     background:#4CAF50;
     color:white;
-    border:none;
+    cursor:pointer;
 }
+
+button:hover{
+    background:#45a049;
+}
+
+input{
+    padding:8px;
+    margin:5px;
+    width:200px;
+}
+
+#output{
+    margin-top:20px;
+    height:250px;
+    background:black;
+    color:#00ff9c;
+    padding:10px;
+    overflow-y:auto;
+    text-align:left;
+    font-family:monospace;
+}
+
 </style>
 </head>
 
 <body>
 
-<h1>Mini Banking System</h1>
+<h1>🏦 Mini Banking System</h1>
 
-<div id="terminal"></div>
+<div class="container">
 
-<br>
+<button onclick="sendCommand(1)">Create Account</button>
+<button onclick="sendCommand(2)">Deposit</button>
+<button onclick="sendCommand(3)">Withdraw</button>
+<button onclick="sendCommand(4)">Search Account</button>
+<button onclick="sendCommand(5)">View Transactions</button>
 
-<input id="inputBox" placeholder="Enter input here">
-<button onclick="sendInput()">Send</button>
+<br><br>
+
+<input id="userInput" placeholder="Enter data here">
+<button onclick="sendInput()">Submit</button>
+
+<div id="output"></div>
+
+</div>
 
 <script>
 
-let inputQueue = [];
-let terminal = document.getElementById("terminal");
-let inputBox = document.getElementById("inputBox");
+let queue = [];
+let output = document.getElementById("output");
+let inputBox = document.getElementById("userInput");
+
+function print(text){
+    output.innerText += text + "\n";
+    output.scrollTop = output.scrollHeight;
+}
+
+function sendCommand(num){
+    let cmd = num + "\n";
+
+    print("> " + num);
+
+    for(let i=0;i<cmd.length;i++)
+        queue.push(cmd.charCodeAt(i));
+}
 
 function sendInput(){
-    let value = inputBox.value + "\n";
 
-    terminal.innerText += "> " + value;
+    let val = inputBox.value + "\n";
 
-    for(let i=0;i<value.length;i++){
-        inputQueue.push(value.charCodeAt(i));
-    }
+    print("> " + inputBox.value);
+
+    for(let i=0;i<val.length;i++)
+        queue.push(val.charCodeAt(i));
 
     inputBox.value="";
 }
 
 inputBox.addEventListener("keypress",function(e){
-    if(e.key==="Enter"){
-        sendInput();
-    }
+    if(e.key==="Enter") sendInput();
 });
 
 var Module = {
 
-print:function(text){
-    terminal.innerText += text + "\n";
-    terminal.scrollTop = terminal.scrollHeight;
+print: function(text){
+    print(text);
 },
 
-stdin:function(){
-    if(inputQueue.length>0){
-        return inputQueue.shift();
-    }
+stdin: function(){
+
+    if(queue.length>0)
+        return queue.shift();
+
     return undefined;
 }
 
