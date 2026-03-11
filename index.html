@@ -77,49 +77,51 @@ input{
 
 <script>
 
-let inputQueue = [];
+let inputQueue=[];
 
-function pushInput(text){
-    inputQueue.push(text);
-}
+/* send menu option */
 
 function sendCommand(cmd){
-    pushInput(cmd.toString());
+    inputQueue.push(cmd + "\n");
 }
+
+/* send user typed input */
 
 function sendInput(){
 
-    const box = document.getElementById("userInput");
+    const box=document.getElementById("userInput");
 
-    if(box.value.trim() === "") return;
+    if(box.value.trim()==="") return;
 
-    pushInput(box.value);
+    inputQueue.push(box.value + "\n");
 
     box.value="";
     box.focus();
 }
 
+/* emscripten module */
+
 var Module = {
 
-print: function(text){
-    const out = document.getElementById("output");
+print:function(text){
+    const out=document.getElementById("output");
     out.textContent += text + "\n";
     out.scrollTop = out.scrollHeight;
 },
 
-printErr: function(text){
-    const out = document.getElementById("output");
+printErr:function(text){
+    const out=document.getElementById("output");
     out.textContent += text + "\n";
 },
 
-preRun: [function(){
+preRun:[function(){
 
-    // override browser prompt
-    window.prompt = function(){
+    /* replace browser prompt */
 
-        if(inputQueue.length > 0){
+    window.prompt=function(){
+
+        if(inputQueue.length>0)
             return inputQueue.shift();
-        }
 
         return "";
     }
