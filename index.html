@@ -3,7 +3,6 @@
 <html>
 
 <head>
-
 <title>Mini Banking System</title>
 
 <style>
@@ -19,22 +18,22 @@ width:500px;
 margin:auto;
 background:white;
 padding:25px;
-margin-top:50px;
+margin-top:40px;
 border-radius:10px;
 box-shadow:0 0 10px gray;
 }
 
 input{
-width:90%;
+width:95%;
 padding:10px;
-margin:5px;
+margin:6px;
 font-size:15px;
 }
 
 button{
-width:95%;
+width:97%;
 padding:12px;
-margin:5px;
+margin:6px;
 font-size:16px;
 cursor:pointer;
 }
@@ -61,7 +60,7 @@ text-align:left;
 
 <input id="accNo" placeholder="Account Number">
 
-<input id="name" placeholder="Name">
+<input id="name" placeholder="Account Holder Name">
 
 <input id="amount" placeholder="Amount">
 
@@ -125,7 +124,7 @@ let result = Module.ccall(
 );
 
 if(result==-1)
-alert("Account not found");
+document.getElementById("output").innerHTML += "Account Not Found<br>";
 else
 document.getElementById("output").innerHTML += "New Balance: "+result+"<br>";
 
@@ -144,10 +143,10 @@ let result = Module.ccall(
 );
 
 if(result==-1)
-alert("Account not found");
+document.getElementById("output").innerHTML += "Account Not Found<br>";
 
 else if(result==-2)
-alert("Insufficient balance");
+document.getElementById("output").innerHTML += "Insufficient Balance<br>";
 
 else
 document.getElementById("output").innerHTML += "New Balance: "+result+"<br>";
@@ -166,7 +165,7 @@ let result = Module.ccall(
 );
 
 if(result==-1)
-alert("Account not found");
+document.getElementById("output").innerHTML += "Account Not Found<br>";
 else
 document.getElementById("output").innerHTML += "Balance: "+result+"<br>";
 
