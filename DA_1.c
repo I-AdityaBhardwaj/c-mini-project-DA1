@@ -1,374 +1,252 @@
-/*
-Project Title: Mini Banking System with Transaction Log
-*/
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
-#ifdef __EMSCRIPTEN__
-#include <emscripten/emscripten.h>
-#endif
-
-
-/* STRUCTURES */
-
-typedef struct {
+struct Account
+{
     int accNo;
     char name[50];
     float balance;
-} Account;
+};
 
-typedef struct {
-    int accNo;
-    char type[20];
-    float amount;
-    char date[50];
-} Transaction;
+void logTransaction(int accNo, char type[], float amount)
+{
+    FILE *fp;
+    fp = fopen("transactions.dat", "a");
 
+    time_t t;
+    time(&t);
 
-/* FUNCTION PROTOTYPES */
+    fprintf(fp,"%d %s %.2f %s",accNo,type,amount,ctime(&t));
 
-void createAccount();
-void depositOrWithdraw(int isDeposit);
-void searchAccount();
-void viewLastTransactions();
-void logTransaction(int accNo,const char *type,float amount);
-int findAccount(int accNo,Account *acc);
-void menuLoop();
-
-
-/* FILE NAMES */
-
-const char *accFile="accounts.dat";
-const char *logFile="transactions.log";
-
-int choice;
-
-
-/* MAIN FUNCTION */
-
-int main(){
-
-    setvbuf(stdout,NULL,_IONBF,0);
-
-#ifdef __EMSCRIPTEN__
-
-    emscripten_set_main_loop(menuLoop,0,1);
-
-#else
-
-    do{
-        menuLoop();
-    }while(choice!=6);
-
-#endif
-
-    return 0;
+    fclose(fp);
 }
 
+void createAccount()
+{
+    struct Account a;
+    FILE *fp;
 
-/* MENU LOOP */
-
-void menuLoop(){
-
-    printf("\n--- Mini Banking System ---\n");
-    printf("1. Create Account\n");
-    printf("2. Deposit Money\n");
-    printf("3. Withdraw Money\n");
-    printf("4. Search Account / View Summary\n");
-    printf("5. Display Last 5 Transactions\n");
-    printf("6. Exit\n");
-
-    printf("Enter your choice: ");
-
-    if(scanf("%d",&choice)!=1){
-        printf("Invalid input. Please enter a number.\n");
-        while(getchar()!='\n');
-        return;
-    }
-
-    switch(choice){
-
-        case 1:
-            createAccount();
-            break;
-
-        case 2:
-            depositOrWithdraw(1);
-            break;
-
-        case 3:
-            depositOrWithdraw(0);
-            break;
-
-        case 4:
-            searchAccount();
-            break;
-
-        case 5:
-            viewLastTransactions();
-            break;
-
-        case 6:
-            printf("Exiting System...\n");
-
-#ifdef __EMSCRIPTEN__
-            emscripten_cancel_main_loop();
-#endif
-            break;
-
-        default:
-            printf("Invalid choice!\n");
-    }
-}
-
-
-/* CREATE ACCOUNT */
-
-void createAccount(){
-
-    Account acc;
-    Account temp;
-
-    FILE *fp=fopen(accFile,"ab");
-
-    if(fp==NULL){
-        printf("File error!\n");
-        return;
-    }
+    fp = fopen("accounts.dat","a");
 
     printf("Enter Account Number: ");
+    scanf("%d",&a.accNo);
 
-    if(scanf("%d",&acc.accNo)!=1){
-        printf("Invalid account number.\n");
-        fclose(fp);
-        return;
-    }
-
-    if(findAccount(acc.accNo,&temp)){
-        printf("Account already exists!\n");
-        fclose(fp);
-        return;
-    }
-
-    printf("Enter Account Holder Name: ");
-    scanf(" %[^\n]",acc.name);
+    printf("Enter Name: ");
+    scanf("%s",a.name);
 
     printf("Enter Initial Balance: ");
-    scanf("%f",&acc.balance);
+    scanf("%f",&a.balance);
 
-    if(acc.balance<0){
-        printf("Balance cannot be negative.\n");
-        fclose(fp);
+    if(a.balance < 0)
+    {
+        printf("Balance cannot be negative\n");
         return;
     }
 
-    fwrite(&acc,sizeof(Account),1,fp);
+    fwrite(&a,sizeof(a),1,fp);
 
     fclose(fp);
 
-    printf("Account created successfully!\n");
-
-    if(acc.balance>0)
-        logTransaction(acc.accNo,"Initial Deposit",acc.balance);
+    printf("Account Created Successfully\n");
 }
 
+void deposit()
+{
+    int acc;
+    float amount;
+    struct Account a;
+    FILE *fp;
 
-/* FIND ACCOUNT */
+    printf("Enter Account Number: ");
+    scanf("%d",&acc);
 
-int findAccount(int accNo,Account *acc){
+    printf("Enter Amount: ");
+    scanf("%f",&amount);
 
-    FILE *fp=fopen(accFile,"rb");
+    if(amount<=0)
+    {
+        printf("Invalid amount\n");
+        return;
+    }
 
-    if(fp==NULL)
-        return 0;
+    fp = fopen("accounts.dat","r+");
 
-    while(fread(acc,sizeof(Account),1,fp)){
+    while(fread(&a,sizeof(a),1,fp))
+    {
+        if(a.accNo==acc)
+        {
+            a.balance += amount;
 
-        if(acc->accNo==accNo){
+            fseek(fp,-sizeof(a),SEEK_CUR);
+            fwrite(&a,sizeof(a),1,fp);
 
             fclose(fp);
-            return 1;
+
+            logTransaction(acc,"Deposit",amount);
+
+            printf("Deposit Successful\n");
+            return;
         }
     }
 
     fclose(fp);
-
-    return 0;
+    printf("Account Not Found\n");
 }
 
-
-/* DEPOSIT / WITHDRAW */
-
-void depositOrWithdraw(int isDeposit){
-
-    int accNo;
+void withdraw()
+{
+    int acc;
     float amount;
-    Account acc;
-
-    int found=0;
+    struct Account a;
+    FILE *fp;
 
     printf("Enter Account Number: ");
+    scanf("%d",&acc);
 
-    if(scanf("%d",&accNo)!=1)
-        return;
+    printf("Enter Amount: ");
+    scanf("%f",&amount);
 
-    FILE *fp=fopen(accFile,"rb+");
+    fp = fopen("accounts.dat","r+");
 
-    if(fp==NULL){
-
-        printf("No records found!\n");
-        return;
-    }
-
-    while(fread(&acc,sizeof(Account),1,fp)){
-
-        if(acc.accNo==accNo){
-
-            found=1;
-
-            printf("Current Balance: %.2f\n",acc.balance);
-
-            printf("Enter amount to %s: ",isDeposit?"deposit":"withdraw");
-
-            if(scanf("%f",&amount)!=1)
-                break;
-
-            if(amount<=0){
-
-                printf("Amount must be positive.\n");
+    while(fread(&a,sizeof(a),1,fp))
+    {
+        if(a.accNo==acc)
+        {
+            if(a.balance < amount)
+            {
+                printf("Insufficient Balance\n");
+                fclose(fp);
+                return;
             }
 
-            else if(!isDeposit && acc.balance<amount){
+            a.balance -= amount;
 
-                printf("Insufficient balance!\n");
-            }
+            fseek(fp,-sizeof(a),SEEK_CUR);
+            fwrite(&a,sizeof(a),1,fp);
 
-            else{
+            fclose(fp);
 
-                if(isDeposit)
-                    acc.balance+=amount;
-                else
-                    acc.balance-=amount;
+            logTransaction(acc,"Withdraw",amount);
 
-                fseek(fp,-sizeof(Account),SEEK_CUR);
-
-                fwrite(&acc,sizeof(Account),1,fp);
-
-                printf("Transaction successful!\n");
-                printf("New Balance: %.2f\n",acc.balance);
-
-                logTransaction(accNo,isDeposit?"Deposit":"Withdrawal",amount);
-            }
-
-            break;
+            printf("Withdrawal Successful\n");
+            return;
         }
     }
 
-    if(!found)
-        printf("Account not found!\n");
+    fclose(fp);
+    printf("Account Not Found\n");
+}
+
+void searchAccount()
+{
+    int acc;
+    struct Account a;
+    FILE *fp;
+
+    printf("Enter Account Number: ");
+    scanf("%d",&acc);
+
+    fp = fopen("accounts.dat","r");
+
+    while(fread(&a,sizeof(a),1,fp))
+    {
+        if(a.accNo==acc)
+        {
+            printf("\nAccount Found\n");
+            printf("Name: %s\n",a.name);
+            printf("Balance: %.2f\n",a.balance);
+
+            fclose(fp);
+            return;
+        }
+    }
+
+    fclose(fp);
+    printf("Account Not Found\n");
+}
+
+void displaySummary()
+{
+    struct Account a;
+    FILE *fp;
+
+    fp = fopen("accounts.dat","r");
+
+    printf("\n----Account List----\n");
+
+    while(fread(&a,sizeof(a),1,fp))
+    {
+        printf("AccNo: %d  Name: %s  Balance: %.2f\n",a.accNo,a.name,a.balance);
+    }
 
     fclose(fp);
 }
 
-
-/* SEARCH ACCOUNT */
-
-void searchAccount(){
-
-    int accNo;
-    Account acc;
-
-    printf("Enter Account Number: ");
-
-    if(scanf("%d",&accNo)!=1)
-        return;
-
-    if(findAccount(accNo,&acc)){
-
-        printf("\n--- Account Summary ---\n");
-
-        printf("Account No: %d\n",acc.accNo);
-        printf("Name: %s\n",acc.name);
-        printf("Balance: %.2f\n",acc.balance);
-    }
-
-    else{
-
-        printf("Account not found!\n");
-    }
-}
-
-
-/* LOG TRANSACTION */
-
-void logTransaction(int accNo,const char *type,float amount){
-
-    FILE *fp=fopen(logFile,"a");
-
-    if(fp==NULL)
-        return;
-
-    time_t t=time(NULL);
-
-    struct tm tm=*localtime(&t);
-
-    fprintf(fp,"%d,%s,%.2f,%d-%02d-%02d\n",
-            accNo,
-            type,
-            amount,
-            tm.tm_year+1900,
-            tm.tm_mon+1,
-            tm.tm_mday);
-
-    fclose(fp);
-}
-
-
-/* VIEW LAST 5 TRANSACTIONS */
-
-void viewLastTransactions(){
-
-    int accNo;
-
-    printf("Enter Account Number: ");
-
-    if(scanf("%d",&accNo)!=1)
-        return;
-
-    FILE *fp=fopen(logFile,"r");
-
-    if(fp==NULL){
-
-        printf("No transaction records found.\n");
-        return;
-    }
-
-    char lines[100][200];
+void showLastTransactions()
+{
+    int acc;
     int count=0;
 
-    while(fgets(lines[count],200,fp)){
+    printf("Enter Account Number: ");
+    scanf("%d",&acc);
 
-        count++;
+    FILE *fp = fopen("transactions.dat","r");
 
-        if(count>=100)
-            break;
+    char line[200];
+
+    printf("\nRecent Transactions:\n");
+
+    while(fgets(line,sizeof(line),fp))
+    {
+        int fileAcc;
+
+        sscanf(line,"%d",&fileAcc);
+
+        if(fileAcc==acc)
+        {
+            printf("%s",line);
+            count++;
+        }
+
+        if(count==5)
+        break;
     }
 
     fclose(fp);
+}
 
-    printf("\nLast Transactions:\n");
+int main()
+{
+    int choice;
 
-    int start=count-5;
+    while(1)
+    {
+        printf("\n----- Mini Banking System -----\n");
 
-    if(start<0)
-        start=0;
+        printf("1 Create Account\n");
+        printf("2 Deposit\n");
+        printf("3 Withdraw\n");
+        printf("4 Search Account\n");
+        printf("5 Account Summary\n");
+        printf("6 Show Last Transactions\n");
+        printf("7 Exit\n");
 
-    for(int i=start;i<count;i++){
+        printf("Enter choice: ");
+        scanf("%d",&choice);
 
-        if(strstr(lines[i],",")!=NULL)
-            printf("%s",lines[i]);
+        switch(choice)
+        {
+            case 1: createAccount(); break;
+            case 2: deposit(); break;
+            case 3: withdraw(); break;
+            case 4: searchAccount(); break;
+            case 5: displaySummary(); break;
+            case 6: showLastTransactions(); break;
+            case 7: exit(0);
+
+            default: printf("Invalid Choice\n");
+        }
     }
 }
