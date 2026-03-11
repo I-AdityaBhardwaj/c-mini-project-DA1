@@ -81,10 +81,12 @@ input{
 
 let inputBuffer = "";
 
-/* send command buttons */
+/* send button command */
 
 function sendCommand(cmd){
+
     inputBuffer += cmd + "\n";
+
 }
 
 /* send textbox input */
@@ -98,34 +100,39 @@ function sendInput(){
     inputBuffer += box.value + "\n";
 
     box.value="";
+
     box.focus();
 }
 
-/* emscripten configuration */
+/* emscripten module */
 
 var Module = {
 
-print: function(text){
-    const out = document.getElementById("output");
-    if(out){
-        out.textContent += text + "\n";
-        out.scrollTop = out.scrollHeight;
-    }
+print:function(text){
+
+    const out=document.getElementById("output");
+
+    out.textContent += text + "\n";
+
+    out.scrollTop = out.scrollHeight;
+
 },
 
-printErr: function(text){
-    const out = document.getElementById("output");
-    if(out){
-        out.textContent += text + "\n";
-    }
+printErr:function(text){
+
+    const out=document.getElementById("output");
+
+    out.textContent += text + "\n";
+
 },
 
-stdin: function(){
+stdin:function(){
 
-    if(inputBuffer.length === 0)
+    if(inputBuffer.length===0)
         return null;
 
     const ch = inputBuffer.charCodeAt(0);
+
     inputBuffer = inputBuffer.slice(1);
 
     return ch;
@@ -135,8 +142,7 @@ stdin: function(){
 
 </script>
 
-<!-- IMPORTANT: index.js must load AFTER Module -->
-<script src="index.js"></script>
+<script async src="index.js"></script>
 
 </body>
 </html>
