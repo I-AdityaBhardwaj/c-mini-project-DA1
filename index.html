@@ -35,15 +35,9 @@ button:hover{
     background:#45a049;
 }
 
-input{
-    padding:10px;
-    margin:10px;
-    width:250px;
-}
-
 #output{
     margin-top:20px;
-    height:300px;
+    height:350px;
     background:black;
     color:#00ff9c;
     padding:10px;
@@ -62,16 +56,7 @@ input{
 
 <div class="container">
 
-<button onclick="sendCommand(1)">Create Account</button>
-<button onclick="sendCommand(2)">Deposit</button>
-<button onclick="sendCommand(3)">Withdraw</button>
-<button onclick="sendCommand(4)">Search Account</button>
-<button onclick="sendCommand(5)">View Transactions</button>
-
-<br><br>
-
-<input id="userInput" placeholder="Enter data here">
-<button onclick="sendInput()">Submit</button>
+<button onclick="runProgram()">Run Banking System</button>
 
 <div id="output"></div>
 
@@ -79,70 +64,35 @@ input{
 
 <script>
 
-let inputBuffer = "";
-
-/* send button command */
-
-function sendCommand(cmd){
-
-    inputBuffer += cmd + "\n";
-
-}
-
-/* send textbox input */
-
-function sendInput(){
-
-    const box = document.getElementById("userInput");
-
-    if(box.value.trim()==="") return;
-
-    inputBuffer += box.value + "\n";
-
-    box.value="";
-
-    box.focus();
-}
-
-/* emscripten module */
-
 var Module = {
 
-print:function(text){
+print: function(text){
 
-    const out=document.getElementById("output");
+    var out=document.getElementById("output");
 
     out.textContent += text + "\n";
 
     out.scrollTop = out.scrollHeight;
-
 },
 
-printErr:function(text){
+printErr: function(text){
 
-    const out=document.getElementById("output");
+    var out=document.getElementById("output");
 
     out.textContent += text + "\n";
-
-},
-
-stdin:function(){
-
-    if(inputBuffer.length===0)
-        return null;
-
-    const ch = inputBuffer.charCodeAt(0);
-
-    inputBuffer = inputBuffer.slice(1);
-
-    return ch;
 }
 
 };
 
+function runProgram(){
+
+    document.getElementById("output").textContent="";
+
+}
+
 </script>
 
-<script async src="index.js"></script>
+<script src="index.js"></script>
 
 </body>
 </html>
