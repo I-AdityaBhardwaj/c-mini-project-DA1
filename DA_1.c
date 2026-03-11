@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
@@ -10,269 +9,154 @@ struct Account
     float balance;
 };
 
-int getInt()
-{
-    char input[50];
-    fgets(input, sizeof(input), stdin);
-    int value;
-    sscanf(input, "%d", &value);
-    return value;
-}
-
-float getFloat()
-{
-    char input[50];
-    fgets(input, sizeof(input), stdin);
-    float value;
-    sscanf(input, "%f", &value);
-    return value;
-}
-
 void logTransaction(int accNo, char type[], float amount)
 {
-    FILE *fp = fopen("transactions.txt", "a");
+    FILE *fp = fopen("transactions.txt","a");
 
     time_t t = time(NULL);
 
-    fprintf(fp, "%d %s %.2f %s", accNo, type, amount, ctime(&t));
+    fprintf(fp,"%d %s %.2f %s\n",accNo,type,amount,ctime(&t));
 
     fclose(fp);
 }
 
-void createAccount()
+int createAccount(int accNo, char name[], float balance)
 {
     struct Account a;
 
-    FILE *fp = fopen("accounts.dat", "ab");
+    a.accNo = accNo;
+    strcpy(a.name,name);
+    a.balance = balance;
 
-    printf("\nEnter Account Number: ");
-    fflush(stdout);
-    a.accNo = getInt();
+    FILE *fp = fopen("accounts.dat","ab");
 
-    printf("Enter Name: ");
-    fflush(stdout);
-    fgets(a.name, sizeof(a.name), stdin);
-
-    a.name[strcspn(a.name, "\n")] = 0;
-
-    printf("Enter Initial Balance: ");
-    fflush(stdout);
-    a.balance = getFloat();
-
-    if(a.balance < 0)
-    {
-        printf("Balance cannot be negative\n");
-        return;
-    }
-
-    fwrite(&a, sizeof(a), 1, fp);
+    fwrite(&a,sizeof(a),1,fp);
 
     fclose(fp);
 
-    printf("Account Created Successfully\n");
+    return 1;
 }
 
-void deposit()
+float deposit(int accNo, float amount)
 {
-    int acc;
-    float amount;
     struct Account a;
 
-    FILE *fp = fopen("accounts.dat", "rb+");
-
-    printf("Enter Account Number: ");
-    fflush(stdout);
-    acc = getInt();
-
-    printf("Enter Amount: ");
-    fflush(stdout);
-    amount = getFloat();
-
-    while(fread(&a, sizeof(a), 1, fp))
-    {
-        if(a.accNo == acc)
-        {
-            a.balance += amount;
-
-            fseek(fp, -sizeof(a), SEEK_CUR);
-
-            fwrite(&a, sizeof(a), 1, fp);
-
-            logTransaction(acc,"Deposit",amount);
-
-            printf("Deposit Successful\n");
-
-            fclose(fp);
-            return;
-        }
-    }
-
-    printf("Account Not Found\n");
-
-    fclose(fp);
-}
-
-void withdraw()
-{
-    int acc;
-    float amount;
-    struct Account a;
-
-    FILE *fp = fopen("accounts.dat", "rb+");
-
-    printf("Enter Account Number: ");
-    fflush(stdout);
-    acc = getInt();
-
-    printf("Enter Amount: ");
-    fflush(stdout);
-    amount = getFloat();
+    FILE *fp = fopen("accounts.dat","rb+");
 
     while(fread(&a,sizeof(a),1,fp))
     {
-        if(a.accNo == acc)
+        if(a.accNo==accNo)
+        {
+            a.balance += amount;
+
+            fseek(fp,-sizeof(a),SEEK_CUR);
+            fwrite(&a,sizeof(a),1,fp);
+
+            fclose(fp);
+
+            logTransaction(accNo,"Deposit",amount);
+
+            return a.balance;
+        }
+    }
+
+    fclose(fp);
+
+    return -1;
+}
+
+float withdraw(int accNo, float amount)
+{
+    struct Account a;
+
+    FILE *fp = fopen("accounts.dat","rb+");
+
+    while(fread(&a,sizeof(a),1,fp))
+    {
+        if(a.accNo==accNo)
         {
             if(a.balance < amount)
             {
-                printf("Insufficient Balance\n");
                 fclose(fp);
-                return;
+                return -2;
             }
 
             a.balance -= amount;
 
             fseek(fp,-sizeof(a),SEEK_CUR);
-
             fwrite(&a,sizeof(a),1,fp);
 
-            logTransaction(acc,"Withdraw",amount);
-
-            printf("Withdrawal Successful\n");
-
             fclose(fp);
-            return;
+
+            logTransaction(accNo,"Withdraw",amount);
+
+            return a.balance;
         }
     }
 
-    printf("Account Not Found\n");
-
     fclose(fp);
+
+    return -1;
 }
 
-void searchAccount()
+float searchAccount(int accNo)
 {
-    int acc;
     struct Account a;
 
     FILE *fp = fopen("accounts.dat","rb");
 
-    printf("Enter Account Number: ");
-    fflush(stdout);
-    acc = getInt();
-
     while(fread(&a,sizeof(a),1,fp))
     {
-        if(a.accNo == acc)
+        if(a.accNo==accNo)
         {
-            printf("\nAccount Found\n");
-            printf("Name: %s\n",a.name);
-            printf("Balance: %.2f\n",a.balance);
-
             fclose(fp);
-            return;
+            return a.balance;
         }
     }
 
-    printf("Account Not Found\n");
-
     fclose(fp);
+
+    return -1;
 }
 
-void displaySummary()
+void accountSummary()
 {
     struct Account a;
 
     FILE *fp = fopen("accounts.dat","rb");
 
-    printf("\n--- Account Summary ---\n");
+    printf("\nAccount Summary\n");
 
     while(fread(&a,sizeof(a),1,fp))
     {
-        printf("\nAccNo: %d",a.accNo);
-        printf("\nName: %s",a.name);
-        printf("\nBalance: %.2f\n",a.balance);
+        printf("AccNo: %d Name: %s Balance: %.2f\n",
+        a.accNo,a.name,a.balance);
     }
 
     fclose(fp);
 }
 
-void lastTransactions()
+void lastTransactions(int accNo)
 {
-    int acc;
-    char line[200];
-    int count = 0;
-
-    printf("Enter Account Number: ");
-    fflush(stdout);
-    acc = getInt();
-
     FILE *fp = fopen("transactions.txt","r");
 
-    printf("\nLast Transactions:\n");
+    char line[200];
+    int count=0;
 
     while(fgets(line,sizeof(line),fp))
     {
-        int fileAcc;
+        int id;
+        sscanf(line,"%d",&id);
 
-        sscanf(line,"%d",&fileAcc);
-
-        if(fileAcc == acc)
+        if(id==accNo)
         {
             printf("%s",line);
             count++;
-        }
 
-        if(count == 5)
-        break;
+            if(count==5)
+            break;
+        }
     }
 
     fclose(fp);
-}
-
-int main()
-{
-    int choice;
-
-    while(1)
-    {
-        printf("\n\n===== MINI BANKING SYSTEM =====\n");
-
-        printf("1 Create Account\n");
-        printf("2 Deposit\n");
-        printf("3 Withdraw\n");
-        printf("4 Search Account\n");
-        printf("5 Account Summary\n");
-        printf("6 Last 5 Transactions\n");
-        printf("7 Exit\n");
-
-        printf("Enter choice: ");
-        fflush(stdout);
-
-        choice = getInt();
-
-        switch(choice)
-        {
-            case 1: createAccount(); break;
-            case 2: deposit(); break;
-            case 3: withdraw(); break;
-            case 4: searchAccount(); break;
-            case 5: displaySummary(); break;
-            case 6: lastTransactions(); break;
-            case 7: exit(0);
-
-            default: printf("Invalid Choice\n");
-        }
-    }
-
-    return 0;
 }
