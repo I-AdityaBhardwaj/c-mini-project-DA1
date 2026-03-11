@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
 <meta charset="utf-8">
 <title>Mini Banking System</title>
@@ -58,6 +59,7 @@ input{
 </style>
 </head>
 
+
 <body>
 
 <h1>🏦 Mini Banking System</h1>
@@ -72,109 +74,121 @@ input{
 
 <br><br>
 
-<input id="userInput" placeholder="Enter data here" autofocus>
+<input id="userInput" placeholder="Enter data here">
 <button onclick="sendInput()">Submit</button>
 
 <div id="output"></div>
 
 </div>
 
+
 <script>
 
-/* INPUT QUEUE FOR C PROGRAM */
+var inputQueue=[];
 
-var inputQueue = [];
+var output=document.getElementById("output");
 
 
-/* PUSH USER INPUT TO C PROGRAM */
+function print(text){
 
-function pushInput(str){
+    output.textContent += text + "\n";
 
-    str = str + "\n";
+    output.scrollTop = output.scrollHeight;
 
-    for(let i=0;i<str.length;i++){
-        inputQueue.push(str.charCodeAt(i));
-    }
 }
 
 
-/* BUTTON COMMANDS */
+function pushInput(str){
+
+    str=str+"\n";
+
+    for(let i=0;i<str.length;i++){
+
+        inputQueue.push(str.charCodeAt(i));
+
+    }
+
+}
+
 
 function sendCommand(cmd){
 
-    print("> " + cmd);
+    print("> "+cmd);
 
     pushInput(cmd);
 
     document.getElementById("userInput").focus();
+
 }
 
-
-/* USER INPUT */
 
 function sendInput(){
 
-    const box = document.getElementById("userInput");
-    const value = box.value;
+    const box=document.getElementById("userInput");
 
-    if(value.trim()==="") return;
+    const val=box.value;
 
-    print("> " + value);
+    if(val.trim()==="") return;
 
-    pushInput(value);
+    print("> "+val);
+
+    pushInput(val);
 
     box.value="";
+
     box.focus();
+
 }
 
-
-/* ENTER KEY SUPPORT */
 
 document.getElementById("userInput").addEventListener("keypress",function(e){
 
     if(e.key==="Enter"){
+
         sendInput();
+
     }
 
 });
 
 
-/* OUTPUT TERMINAL */
+var Module={
 
-function print(text){
+print:function(text){
 
-    const out=document.getElementById("output");
+    print(text);
 
-    out.textContent += text + "\n";
-
-    out.scrollTop = out.scrollHeight;
-}
-
-
-/* EMSCRIPTEN OVERRIDE */
-
-var Module = {
-
-stdin: function(){
-
-    if(inputQueue.length>0){
-        return inputQueue.shift();
-    }
-
-    return null;
 },
 
-print: function(text){
+printErr:function(text){
+
     print(text);
-}
+
+},
+
+preRun:[function(){
+
+    FS.init(function(){
+
+        if(inputQueue.length>0){
+
+            return inputQueue.shift();
+
+        }
+
+        return undefined;
+
+    });
+
+}]
 
 };
 
 
-/* AUTO FOCUS */
-
 window.onload=function(){
+
     document.getElementById("userInput").focus();
+
 };
 
 </script>
@@ -183,4 +197,5 @@ window.onload=function(){
 <script async src="index.js"></script>
 
 </body>
+
 </html>
