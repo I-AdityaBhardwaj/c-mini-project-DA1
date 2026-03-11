@@ -1,12 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
 <meta charset="utf-8">
 <title>Mini Banking System</title>
 
 <style>
-
 body{
     font-family: Arial;
     background:#121212;
@@ -30,7 +28,6 @@ button{
     background:#4CAF50;
     color:white;
     cursor:pointer;
-    font-size:15px;
 }
 
 button:hover{
@@ -41,7 +38,6 @@ input{
     padding:10px;
     margin:10px;
     width:250px;
-    font-size:16px;
 }
 
 #output{
@@ -55,10 +51,8 @@ input{
     font-family:monospace;
     border:2px solid #444;
 }
-
 </style>
 </head>
-
 
 <body>
 
@@ -81,121 +75,62 @@ input{
 
 </div>
 
-
 <script>
 
-var inputQueue=[];
+let inputQueue = [];
 
-var output=document.getElementById("output");
-
-
-function print(text){
-
-    output.textContent += text + "\n";
-
-    output.scrollTop = output.scrollHeight;
-
+function pushInput(text){
+    inputQueue.push(text);
 }
-
-
-function pushInput(str){
-
-    str=str+"\n";
-
-    for(let i=0;i<str.length;i++){
-
-        inputQueue.push(str.charCodeAt(i));
-
-    }
-
-}
-
 
 function sendCommand(cmd){
-
-    print("> "+cmd);
-
-    pushInput(cmd);
-
-    document.getElementById("userInput").focus();
-
+    pushInput(cmd.toString());
 }
-
 
 function sendInput(){
 
-    const box=document.getElementById("userInput");
+    const box = document.getElementById("userInput");
 
-    const val=box.value;
+    if(box.value.trim() === "") return;
 
-    if(val.trim()==="") return;
-
-    print("> "+val);
-
-    pushInput(val);
+    pushInput(box.value);
 
     box.value="";
-
     box.focus();
-
 }
 
+var Module = {
 
-document.getElementById("userInput").addEventListener("keypress",function(e){
-
-    if(e.key==="Enter"){
-
-        sendInput();
-
-    }
-
-});
-
-
-var Module={
-
-print:function(text){
-
-    print(text);
-
+print: function(text){
+    const out = document.getElementById("output");
+    out.textContent += text + "\n";
+    out.scrollTop = out.scrollHeight;
 },
 
-printErr:function(text){
-
-    print(text);
-
+printErr: function(text){
+    const out = document.getElementById("output");
+    out.textContent += text + "\n";
 },
 
-preRun:[function(){
+preRun: [function(){
 
-    FS.init(function(){
+    // override browser prompt
+    window.prompt = function(){
 
-        if(inputQueue.length>0){
-
+        if(inputQueue.length > 0){
             return inputQueue.shift();
-
         }
 
-        return undefined;
-
-    });
+        return "";
+    }
 
 }]
 
 };
 
-
-window.onload=function(){
-
-    document.getElementById("userInput").focus();
-
-};
-
 </script>
-
 
 <script async src="index.js"></script>
 
 </body>
-
 </html>
