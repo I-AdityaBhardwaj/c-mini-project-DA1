@@ -56,7 +56,7 @@ button:hover{
 
 <div class="container">
 
-<button onclick="runProgram()">Run Banking System</button>
+<button onclick="startProgram()">Start Banking System</button>
 
 <div id="output"></div>
 
@@ -67,27 +67,20 @@ button:hover{
 var Module = {
 
 print: function(text){
-
     var out=document.getElementById("output");
-
     out.textContent += text + "\n";
-
     out.scrollTop = out.scrollHeight;
 },
 
 printErr: function(text){
-
     var out=document.getElementById("output");
-
     out.textContent += text + "\n";
 }
 
 };
 
-function runProgram(){
-
+function startProgram(){
     document.getElementById("output").textContent="";
-
 }
 
 </script>
