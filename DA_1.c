@@ -7,6 +7,11 @@ Project Title: Mini Banking System with Transaction Log
 #include <string.h>
 #include <time.h>
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten/emscripten.h>
+#endif
+
+
 /* STRUCTURES */
 
 typedef struct {
@@ -31,6 +36,7 @@ void searchAccount();
 void viewLastTransactions();
 void logTransaction(int accNo,const char *type,float amount);
 int findAccount(int accNo,Account *acc);
+void menuLoop();
 
 
 /* FILE NAMES */
@@ -38,66 +44,84 @@ int findAccount(int accNo,Account *acc);
 const char *accFile="accounts.dat";
 const char *logFile="transactions.log";
 
+int choice;
 
-/* MAIN PROGRAM */
+
+/* MAIN FUNCTION */
 
 int main(){
 
-    int choice;
-
     setvbuf(stdout,NULL,_IONBF,0);
 
+#ifdef __EMSCRIPTEN__
+
+    emscripten_set_main_loop(menuLoop,0,1);
+
+#else
+
     do{
-
-        printf("\n--- Mini Banking System ---\n");
-        printf("1. Create Account\n");
-        printf("2. Deposit Money\n");
-        printf("3. Withdraw Money\n");
-        printf("4. Search Account / View Summary\n");
-        printf("5. Display Last 5 Transactions\n");
-        printf("6. Exit\n");
-
-        printf("Enter your choice: ");
-
-        if(scanf("%d",&choice)!=1){
-            printf("Invalid input. Please enter a number.\n");
-            while(getchar()!='\n');
-            continue;
-        }
-
-        switch(choice){
-
-            case 1:
-                createAccount();
-                break;
-
-            case 2:
-                depositOrWithdraw(1);
-                break;
-
-            case 3:
-                depositOrWithdraw(0);
-                break;
-
-            case 4:
-                searchAccount();
-                break;
-
-            case 5:
-                viewLastTransactions();
-                break;
-
-            case 6:
-                printf("Exiting System...\n");
-                break;
-
-            default:
-                printf("Invalid choice!\n");
-        }
-
+        menuLoop();
     }while(choice!=6);
 
+#endif
+
     return 0;
+}
+
+
+/* MENU LOOP */
+
+void menuLoop(){
+
+    printf("\n--- Mini Banking System ---\n");
+    printf("1. Create Account\n");
+    printf("2. Deposit Money\n");
+    printf("3. Withdraw Money\n");
+    printf("4. Search Account / View Summary\n");
+    printf("5. Display Last 5 Transactions\n");
+    printf("6. Exit\n");
+
+    printf("Enter your choice: ");
+
+    if(scanf("%d",&choice)!=1){
+        printf("Invalid input. Please enter a number.\n");
+        while(getchar()!='\n');
+        return;
+    }
+
+    switch(choice){
+
+        case 1:
+            createAccount();
+            break;
+
+        case 2:
+            depositOrWithdraw(1);
+            break;
+
+        case 3:
+            depositOrWithdraw(0);
+            break;
+
+        case 4:
+            searchAccount();
+            break;
+
+        case 5:
+            viewLastTransactions();
+            break;
+
+        case 6:
+            printf("Exiting System...\n");
+
+#ifdef __EMSCRIPTEN__
+            emscripten_cancel_main_loop();
+#endif
+            break;
+
+        default:
+            printf("Invalid choice!\n");
+    }
 }
 
 
