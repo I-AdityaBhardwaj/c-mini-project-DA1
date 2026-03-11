@@ -483,6 +483,8 @@ var
 
 var runtimeInitialized = false;
 
+var runtimeExited = false;
+
 
 
 function updateMemoryViews() {
@@ -541,6 +543,18 @@ function preMain() {
   // No ATMAINS hooks
 }
 
+function exitRuntime() {
+  assert(!runtimeExited);
+  checkStackCookie();
+   // PThreads reuse the runtime from the main thread.
+  ___funcs_on_exit(); // Native atexit() functions
+  // Begin ATEXITS hooks
+  FS.quit();
+TTY.shutdown();
+  // End ATEXITS hooks
+  runtimeExited = true;
+}
+
 function postRun() {
   checkStackCookie();
    // PThreads reuse the runtime from the main thread.
@@ -594,6 +608,7 @@ function abort(what) {
 function createExportWrapper(name, nargs) {
   return (...args) => {
     assert(runtimeInitialized, `native function \`${name}\` called before runtime initialization`);
+    assert(!runtimeExited, `native function \`${name}\` called after runtime exit (use NO_EXIT_RUNTIME to keep it alive after main() exits)`);
     var f = wasmExports[name];
     assert(f, `exported native function \`${name}\` not found`);
     // Only assert for too many arguments. Too few can be valid since the missing arguments will be zero filled.
@@ -860,7 +875,7 @@ async function createWasm() {
     }
   }
 
-  var noExitRuntime = true;
+  var noExitRuntime = false;
 
   var ptrToString = (ptr) => {
       assert(typeof ptr === 'number', `ptrToString expects a number, got ${typeof ptr}`);
@@ -3941,7 +3956,9 @@ var findStringEnd = (heapOrArray, idx, maxBytesToRead, ignoreNul) => {
   var exitJS = (status, implicit) => {
       EXITSTATUS = status;
   
-      checkUnflushedContent();
+      if (!keepRuntimeAlive()) {
+        exitRuntime();
+      }
   
       // if exit() was called explicitly, warn the user if the runtime isn't actually being shut down
       if (keepRuntimeAlive() && !implicit) {
@@ -4074,6 +4091,9 @@ var findStringEnd = (heapOrArray, idx, maxBytesToRead, ignoreNul) => {
   
   
   var maybeExit = () => {
+      if (runtimeExited) {
+        return;
+      }
       if (!keepRuntimeAlive()) {
         try {
           _exit(EXITSTATUS);
@@ -4083,7 +4103,7 @@ var findStringEnd = (heapOrArray, idx, maxBytesToRead, ignoreNul) => {
       }
     };
   var callUserCallback = (func) => {
-      if (ABORT) {
+      if (runtimeExited || ABORT) {
         err('user callback triggered after runtime exited or application aborted.  Ignoring.');
         return;
       }
@@ -4102,11 +4122,20 @@ var findStringEnd = (heapOrArray, idx, maxBytesToRead, ignoreNul) => {
              document.msFullscreenElement;
     }
   
+  
+  var runtimeKeepalivePush = () => {
+      runtimeKeepaliveCounter += 1;
+    };
+  
+  var runtimeKeepalivePop = () => {
+      assert(runtimeKeepaliveCounter > 0);
+      runtimeKeepaliveCounter -= 1;
+    };
   /** @param {number=} timeout */
   var safeSetTimeout = (func, timeout) => {
-      
+      runtimeKeepalivePush();
       return setTimeout(() => {
-        
+        runtimeKeepalivePop();
         callUserCallback(func);
       }, timeout);
     };
@@ -4700,8 +4729,6 @@ if (Module['wasmBinary']) wasmBinary = Module['wasmBinary'];
   'autoResumeAudioContext',
   'getDynCaller',
   'dynCall',
-  'runtimeKeepalivePush',
-  'runtimeKeepalivePop',
   'asmjsMangle',
   'alignMemory',
   'HandleAllocator',
@@ -4871,6 +4898,8 @@ missingLibrarySymbols.forEach(missingLibrarySymbol)
   'readEmAsmArgsArray',
   'handleException',
   'keepRuntimeAlive',
+  'runtimeKeepalivePush',
+  'runtimeKeepalivePop',
   'callUserCallback',
   'maybeExit',
   'asyncLoad',
@@ -5080,6 +5109,7 @@ function checkIncomingModuleAPI() {
 
 // Imports from the Wasm binary.
 var _main = Module['_main'] = makeInvalidEarlyAccess('_main');
+var ___funcs_on_exit = makeInvalidEarlyAccess('___funcs_on_exit');
 var _fflush = makeInvalidEarlyAccess('_fflush');
 var _emscripten_stack_get_end = makeInvalidEarlyAccess('_emscripten_stack_get_end');
 var _emscripten_stack_get_base = makeInvalidEarlyAccess('_emscripten_stack_get_base');
@@ -5095,6 +5125,7 @@ var wasmMemory = makeInvalidEarlyAccess('wasmMemory');
 
 function assignWasmExports(wasmExports) {
   assert(typeof wasmExports['main'] != 'undefined', 'missing Wasm export: main');
+  assert(typeof wasmExports['__funcs_on_exit'] != 'undefined', 'missing Wasm export: __funcs_on_exit');
   assert(typeof wasmExports['fflush'] != 'undefined', 'missing Wasm export: fflush');
   assert(typeof wasmExports['emscripten_stack_get_end'] != 'undefined', 'missing Wasm export: emscripten_stack_get_end');
   assert(typeof wasmExports['emscripten_stack_get_base'] != 'undefined', 'missing Wasm export: emscripten_stack_get_base');
@@ -5107,6 +5138,7 @@ function assignWasmExports(wasmExports) {
   assert(typeof wasmExports['memory'] != 'undefined', 'missing Wasm export: memory');
   assert(typeof wasmExports['__indirect_function_table'] != 'undefined', 'missing Wasm export: __indirect_function_table');
   _main = Module['_main'] = createExportWrapper('main', 2);
+  ___funcs_on_exit = createExportWrapper('__funcs_on_exit', 0);
   _fflush = createExportWrapper('fflush', 1);
   _emscripten_stack_get_end = wasmExports['emscripten_stack_get_end'];
   _emscripten_stack_get_base = wasmExports['emscripten_stack_get_base'];
@@ -5235,45 +5267,6 @@ function run() {
     doRun();
   }
   checkStackCookie();
-}
-
-function checkUnflushedContent() {
-  // Compiler settings do not allow exiting the runtime, so flushing
-  // the streams is not possible. but in ASSERTIONS mode we check
-  // if there was something to flush, and if so tell the user they
-  // should request that the runtime be exitable.
-  // Normally we would not even include flush() at all, but in ASSERTIONS
-  // builds we do so just for this check, and here we see if there is any
-  // content to flush, that is, we check if there would have been
-  // something a non-ASSERTIONS build would have not seen.
-  // How we flush the streams depends on whether we are in SYSCALLS_REQUIRE_FILESYSTEM=0
-  // mode (which has its own special function for this; otherwise, all
-  // the code is inside libc)
-  var oldOut = out;
-  var oldErr = err;
-  var has = false;
-  out = err = (x) => {
-    has = true;
-  }
-  try { // it doesn't matter if it fails
-    _fflush(0);
-    // also flush in the JS FS layer
-    for (var name of ['stdout', 'stderr']) {
-      var info = FS.analyzePath('/dev/' + name);
-      if (!info) return;
-      var stream = info.object;
-      var rdev = stream.rdev;
-      var tty = TTY.ttys[rdev];
-      if (tty?.output?.length) {
-        has = true;
-      }
-    }
-  } catch(e) {}
-  out = oldOut;
-  err = oldErr;
-  if (has) {
-    warnOnce('stdio streams had content in them that was not flushed. you should set EXIT_RUNTIME to 1 (see the Emscripten FAQ), or make sure to emit a newline when you printf etc.');
-  }
 }
 
 var wasmExports;
