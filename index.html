@@ -5,6 +5,7 @@
 <title>Mini Banking System</title>
 
 <style>
+
 body{
     font-family: Arial;
     background:#121212;
@@ -51,6 +52,7 @@ input{
     font-family:monospace;
     border:2px solid #444;
 }
+
 </style>
 </head>
 
@@ -77,25 +79,28 @@ input{
 
 <script>
 
-let inputQueue=[];
+let inputBuffer = "";
 
-/* send menu option */
+/* send button command */
 
 function sendCommand(cmd){
-    inputQueue.push(cmd + "\n");
+
+    inputBuffer += cmd + "\n";
+
 }
 
-/* send user typed input */
+/* send textbox input */
 
 function sendInput(){
 
-    const box=document.getElementById("userInput");
+    const box = document.getElementById("userInput");
 
     if(box.value.trim()==="") return;
 
-    inputQueue.push(box.value + "\n");
+    inputBuffer += box.value + "\n";
 
     box.value="";
+
     box.focus();
 }
 
@@ -104,29 +109,34 @@ function sendInput(){
 var Module = {
 
 print:function(text){
+
     const out=document.getElementById("output");
+
     out.textContent += text + "\n";
+
     out.scrollTop = out.scrollHeight;
+
 },
 
 printErr:function(text){
+
     const out=document.getElementById("output");
+
     out.textContent += text + "\n";
+
 },
 
-preRun:[function(){
+stdin:function(){
 
-    /* replace browser prompt */
+    if(inputBuffer.length===0)
+        return null;
 
-    window.prompt=function(){
+    const ch = inputBuffer.charCodeAt(0);
 
-        if(inputQueue.length>0)
-            return inputQueue.shift();
+    inputBuffer = inputBuffer.slice(1);
 
-        return "";
-    }
-
-}]
+    return ch;
+}
 
 };
 
