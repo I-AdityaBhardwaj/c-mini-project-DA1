@@ -56,7 +56,33 @@
 // after the generated code, you will need to define   var Module = {};
 // before the code. Then that object will be used in the code, and you
 // can continue to use Module afterwards as well.
-var Module = typeof Module != 'undefined' ? Module : {};
+
+var inputQueue = [];
+
+function pushInput(str) {
+    str = str + "\n";
+    for (let i = 0; i < str.length; i++) {
+        inputQueue.push(str.charCodeAt(i));
+    }
+}
+
+var Module = {
+    stdin: function () {
+        if (inputQueue.length > 0) {
+            return inputQueue.shift();
+        }
+        return null;
+    },
+    print: function (text) {
+        const out = document.getElementById("output");
+        if (out) {
+            out.textContent += text + "\n";
+            out.scrollTop = out.scrollHeight;
+        }
+    }
+};
+
+Module = typeof Module != 'undefined' ? Module : {};
 
 // Determine the runtime environment we are in. You can customize this by
 // setting the ENVIRONMENT setting at compile time (see settings.js).

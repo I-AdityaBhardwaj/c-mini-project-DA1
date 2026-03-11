@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <title>Mini Banking System</title>
@@ -18,7 +18,7 @@ h1{
 }
 
 .container{
-    width:600px;
+    width:700px;
     margin:auto;
 }
 
@@ -29,6 +29,7 @@ button{
     background:#4CAF50;
     color:white;
     cursor:pointer;
+    font-size:15px;
 }
 
 button:hover{
@@ -36,20 +37,22 @@ button:hover{
 }
 
 input{
-    padding:8px;
-    margin:5px;
-    width:200px;
+    padding:10px;
+    margin:10px;
+    width:250px;
+    font-size:16px;
 }
 
 #output{
     margin-top:20px;
-    height:250px;
+    height:300px;
     background:black;
     color:#00ff9c;
     padding:10px;
     overflow-y:auto;
     text-align:left;
     font-family:monospace;
+    border:2px solid #444;
 }
 
 </style>
@@ -69,7 +72,7 @@ input{
 
 <br><br>
 
-<input id="userInput" placeholder="Enter data here">
+<input id="userInput" placeholder="Enter data here" autofocus>
 <button onclick="sendInput()">Submit</button>
 
 <div id="output"></div>
@@ -78,57 +81,104 @@ input{
 
 <script>
 
-let queue = [];
-let output = document.getElementById("output");
-let inputBox = document.getElementById("userInput");
+/* INPUT QUEUE FOR C PROGRAM */
 
-function print(text){
-    output.innerText += text + "\n";
-    output.scrollTop = output.scrollHeight;
+var inputQueue = [];
+
+
+/* PUSH USER INPUT TO C PROGRAM */
+
+function pushInput(str){
+
+    str = str + "\n";
+
+    for(let i=0;i<str.length;i++){
+        inputQueue.push(str.charCodeAt(i));
+    }
 }
 
-function sendCommand(num){
-    let cmd = num + "\n";
 
-    print("> " + num);
+/* BUTTON COMMANDS */
 
-    for(let i=0;i<cmd.length;i++)
-        queue.push(cmd.charCodeAt(i));
+function sendCommand(cmd){
+
+    print("> " + cmd);
+
+    pushInput(cmd);
+
+    document.getElementById("userInput").focus();
 }
+
+
+/* USER INPUT */
 
 function sendInput(){
 
-    let val = inputBox.value + "\n";
+    const box = document.getElementById("userInput");
+    const value = box.value;
 
-    print("> " + inputBox.value);
+    if(value.trim()==="") return;
 
-    for(let i=0;i<val.length;i++)
-        queue.push(val.charCodeAt(i));
+    print("> " + value);
 
-    inputBox.value="";
+    pushInput(value);
+
+    box.value="";
+    box.focus();
 }
 
-inputBox.addEventListener("keypress",function(e){
-    if(e.key==="Enter") sendInput();
+
+/* ENTER KEY SUPPORT */
+
+document.getElementById("userInput").addEventListener("keypress",function(e){
+
+    if(e.key==="Enter"){
+        sendInput();
+    }
+
 });
+
+
+/* OUTPUT TERMINAL */
+
+function print(text){
+
+    const out=document.getElementById("output");
+
+    out.textContent += text + "\n";
+
+    out.scrollTop = out.scrollHeight;
+}
+
+
+/* EMSCRIPTEN OVERRIDE */
 
 var Module = {
 
-print: function(text){
-    print(text);
-},
-
 stdin: function(){
 
-    if(queue.length>0)
-        return queue.shift();
+    if(inputQueue.length>0){
+        return inputQueue.shift();
+    }
 
-    return undefined;
+    return null;
+},
+
+print: function(text){
+    print(text);
 }
 
 };
 
+
+/* AUTO FOCUS */
+
+window.onload=function(){
+    document.getElementById("userInput").focus();
+};
+
 </script>
+
 
 <script async src="index.js"></script>
 
