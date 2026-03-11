@@ -1,14 +1,11 @@
 <!DOCTYPE html>
+
 <html>
 
 <head>
-
 <title>Mini Banking System</title>
 
-<script src="bank.js"></script>
-
 <style>
-
 body{
 font-family:Arial;
 background:#f2f2f2;
@@ -34,9 +31,13 @@ font-size:16px;
 
 #output{
 margin-top:20px;
-font-weight:bold;
+background:black;
+color:lime;
+padding:10px;
+height:200px;
+overflow:auto;
+text-align:left;
 }
-
 </style>
 
 </head>
@@ -47,12 +48,7 @@ font-weight:bold;
 
 <h2>Mini Banking System</h2>
 
-<button onclick="createAcc()">Create Account</button>
-<button onclick="deposit()">Deposit</button>
-<button onclick="withdraw()">Withdraw</button>
-<button onclick="search()">Search Account</button>
-<button onclick="summary()">Account Summary</button>
-<button onclick="lastTx()">Last 5 Transactions</button>
+<button onclick="createAcc()">Create Account</button> <button onclick="deposit()">Deposit</button> <button onclick="withdraw()">Withdraw</button> <button onclick="search()">Search Account</button> <button onclick="summary()">Account Summary</button> <button onclick="lastTx()">Last 5 Transactions</button>
 
 <div id="output"></div>
 
@@ -60,63 +56,72 @@ font-weight:bold;
 
 <script>
 
+var Module = {
+print: function(text) {
+document.getElementById("output").innerHTML += text + "<br>";
+}
+};
+
+</script>
+
+<script src="index.js"></script>
+
+<script>
+
 function createAcc(){
 
-let accNo = prompt("Account Number");
+let acc = prompt("Account Number");
 let name = prompt("Name");
-let balance = prompt("Initial Balance");
+let bal = prompt("Initial Balance");
 
 Module.ccall(
 'createAccount',
 'number',
 ['number','string','number'],
-[accNo,name,balance]
+[acc,name,bal]
 );
 
-document.getElementById("output").innerHTML="Account Created";
-
+document.getElementById("output").innerHTML += "Account Created<br>";
 }
 
 function deposit(){
 
 let acc = prompt("Account Number");
-let amount = prompt("Deposit Amount");
+let amt = prompt("Amount");
 
 let result = Module.ccall(
 'deposit',
 'number',
 ['number','number'],
-[acc,amount]
+[acc,amt]
 );
 
 if(result==-1)
-alert("Account Not Found");
+alert("Account not found");
 else
-document.getElementById("output").innerHTML="New Balance: "+result;
-
+document.getElementById("output").innerHTML += "New Balance: "+result+"<br>";
 }
 
 function withdraw(){
 
 let acc = prompt("Account Number");
-let amount = prompt("Withdraw Amount");
+let amt = prompt("Amount");
 
 let result = Module.ccall(
 'withdraw',
 'number',
 ['number','number'],
-[acc,amount]
+[acc,amt]
 );
 
 if(result==-1)
-alert("Account Not Found");
+alert("Account not found");
 
 else if(result==-2)
-alert("Insufficient Balance");
+alert("Insufficient balance");
 
 else
-document.getElementById("output").innerHTML="New Balance: "+result;
-
+document.getElementById("output").innerHTML += "New Balance: "+result+"<br>";
 }
 
 function search(){
@@ -131,25 +136,18 @@ let result = Module.ccall(
 );
 
 if(result==-1)
-alert("Account Not Found");
+alert("Account not found");
 else
-document.getElementById("output").innerHTML="Balance: "+result;
-
+document.getElementById("output").innerHTML += "Balance: "+result+"<br>";
 }
 
 function summary(){
-
-alert("Check browser console for account summary");
-
 Module.ccall('accountSummary');
-
 }
 
 function lastTx(){
 
 let acc = prompt("Account Number");
-
-alert("Check browser console for transactions");
 
 Module.ccall(
 'lastTransactions',
@@ -157,11 +155,9 @@ null,
 ['number'],
 [acc]
 );
-
 }
 
 </script>
 
 </body>
-
 </html>
