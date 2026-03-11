@@ -3,9 +3,11 @@
 <html>
 
 <head>
+
 <title>Mini Banking System</title>
 
 <style>
+
 body{
 font-family:Arial;
 background:#f2f2f2;
@@ -13,20 +15,28 @@ text-align:center;
 }
 
 .container{
-width:450px;
+width:500px;
 margin:auto;
 background:white;
-padding:20px;
+padding:25px;
 margin-top:50px;
 border-radius:10px;
 box-shadow:0 0 10px gray;
 }
 
+input{
+width:90%;
+padding:10px;
+margin:5px;
+font-size:15px;
+}
+
 button{
-width:100%;
+width:95%;
 padding:12px;
 margin:5px;
 font-size:16px;
+cursor:pointer;
 }
 
 #output{
@@ -38,6 +48,7 @@ height:200px;
 overflow:auto;
 text-align:left;
 }
+
 </style>
 
 </head>
@@ -48,7 +59,23 @@ text-align:left;
 
 <h2>Mini Banking System</h2>
 
-<button onclick="createAcc()">Create Account</button> <button onclick="deposit()">Deposit</button> <button onclick="withdraw()">Withdraw</button> <button onclick="search()">Search Account</button> <button onclick="summary()">Account Summary</button> <button onclick="lastTx()">Last 5 Transactions</button>
+<input id="accNo" placeholder="Account Number">
+
+<input id="name" placeholder="Name">
+
+<input id="amount" placeholder="Amount">
+
+<button onclick="createAcc()">Create Account</button>
+
+<button onclick="deposit()">Deposit</button>
+
+<button onclick="withdraw()">Withdraw</button>
+
+<button onclick="search()">Search Account</button>
+
+<button onclick="summary()">Account Summary</button>
+
+<button onclick="lastTx()">Last 5 Transactions</button>
 
 <div id="output"></div>
 
@@ -70,9 +97,9 @@ document.getElementById("output").innerHTML += text + "<br>";
 
 function createAcc(){
 
-let acc = prompt("Account Number");
-let name = prompt("Name");
-let bal = prompt("Initial Balance");
+let acc = document.getElementById("accNo").value;
+let name = document.getElementById("name").value;
+let bal = document.getElementById("amount").value;
 
 Module.ccall(
 'createAccount',
@@ -82,12 +109,13 @@ Module.ccall(
 );
 
 document.getElementById("output").innerHTML += "Account Created<br>";
+
 }
 
 function deposit(){
 
-let acc = prompt("Account Number");
-let amt = prompt("Amount");
+let acc = document.getElementById("accNo").value;
+let amt = document.getElementById("amount").value;
 
 let result = Module.ccall(
 'deposit',
@@ -100,12 +128,13 @@ if(result==-1)
 alert("Account not found");
 else
 document.getElementById("output").innerHTML += "New Balance: "+result+"<br>";
+
 }
 
 function withdraw(){
 
-let acc = prompt("Account Number");
-let amt = prompt("Amount");
+let acc = document.getElementById("accNo").value;
+let amt = document.getElementById("amount").value;
 
 let result = Module.ccall(
 'withdraw',
@@ -122,11 +151,12 @@ alert("Insufficient balance");
 
 else
 document.getElementById("output").innerHTML += "New Balance: "+result+"<br>";
+
 }
 
 function search(){
 
-let acc = prompt("Account Number");
+let acc = document.getElementById("accNo").value;
 
 let result = Module.ccall(
 'searchAccount',
@@ -139,15 +169,18 @@ if(result==-1)
 alert("Account not found");
 else
 document.getElementById("output").innerHTML += "Balance: "+result+"<br>";
+
 }
 
 function summary(){
+
 Module.ccall('accountSummary');
+
 }
 
 function lastTx(){
 
-let acc = prompt("Account Number");
+let acc = document.getElementById("accNo").value;
 
 Module.ccall(
 'lastTransactions',
@@ -155,6 +188,7 @@ null,
 ['number'],
 [acc]
 );
+
 }
 
 </script>
